@@ -1,0 +1,647 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Background Remover - Your Site</title>
+    <style>
+        /* Your existing CSS styles, with additions for visibility and shadows */
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; /* A slightly more modern font */
+            margin: 0;
+            display: flex;
+            justify-content: center; /* Center content horizontally */
+            align-items: center;     /* Center content vertically */
+            height: 100vh; /* Keep this height to ensure it fills the screen */
+            background: linear-gradient(to right, #000000 0%, #000000 60%, #40e0d0);
+            color: white;
+            overflow: hidden; /* Keep this to prevent scrollbars */
+        }
+
+        .container {
+            display: flex;
+            width: 98%; /* Increased width slightly to take more space on smaller screens */
+            max-width: 800px; /* Changed: උපරිම පළල තවත් සැලකිය යුතු ලෙස අඩු කළා */
+            background-color: rgba(255, 255, 255, 0.05);
+            border-radius: 12px; /* Changed: border radius තව ටිකක් අඩු කළා */
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.5); /* Changed: Stronger shadow for container */
+            padding: 15px; /* Changed: padding තවත් අඩු කළා */
+            box-sizing: border-box;
+            position: relative; /* For loading overlay */
+            min-height: 65vh; /* Changed: min-height තව ටිකක් අඩු කළා */
+            height: auto;
+            max-height: 90vh; /* Changed: max-height තව ටිකක් අඩු කළා */
+            overflow-y: auto; /* Allow scrolling if content overflows */
+        }
+
+        .left-panel {
+            flex: 1;
+            padding-right: 15px; /* Changed: padding-right තවත් අඩු කළා */
+            display: flex; /* Make left panel a flex container */
+            flex-direction: column; /* Stack its children vertically */
+            justify-content: flex-start; /* Align content to the top initially */
+            gap: 10px; /* Changed: gap තවත් අඩු කළා */
+        }
+
+        .left-panel > div:first-child { /* This targets the div wrapping H1 and P */
+            flex-grow: 0; /* Don't grow, take only necessary space */
+        }
+
+        .left-panel h1 {
+            font-size: 2.2em; /* Changed: heading size තවත් අඩු කළා */
+            margin-bottom: 3px; /* Changed: margin තවත් අඩු කළා */
+            text-shadow: 1px 1px 4px rgba(0, 0, 0, 0.4); /* Text shadow for heading */
+        }
+
+        .left-panel p {
+            font-size: 0.9em; /* Changed: paragraph text size තවත් අඩු කළා */
+            line-height: 1.3; /* Changed: line height තවත් අඩු කළා */
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3); /* Text shadow for paragraphs */
+        }
+
+        .free-text {
+            color: #33ff99;
+            font-weight: bold;
+        }
+
+        .upload-area {
+            margin-top: 0;
+            flex-grow: 0;
+            background-color: rgba(255, 255, 255, 0.1);
+            border: 2px dashed rgba(255, 255, 255, 0.3);
+            border-radius: 10px;
+            padding: 20px 10px; /* Changed: padding තවත් අඩු කළා */
+            text-align: center;
+            cursor: pointer;
+            transition: background-color 0.3s ease, box-shadow 0.3s ease, opacity 0.5s ease, transform 0.5s ease; /* Add transition for opacity/transform */
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2); /* Box shadow for upload area */
+            display: flex; /* Flexbox for icon and text alignment */
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100px; /* Changed: min-height තවත් අඩු කළා */
+            opacity: 1; /* Initially visible */
+            transform: scale(1); /* Initially at normal size */
+        }
+        /* Hide and shrink the upload area after processing */
+        .upload-area.hidden-left {
+            opacity: 0;
+            transform: scale(0.8);
+            height: 0; /* Collapse height */
+            padding: 0; /* Collapse padding */
+            margin-top: 0; /* Collapse margin */
+            overflow: hidden; /* Hide content during collapse */
+            pointer-events: none; /* Make it unclickable */
+        }
+
+
+        .upload-area:hover {
+            background-color: rgba(255, 255, 255, 0.15);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        /* New icon for upload area */
+        .upload-area-icon {
+            width: 40px; /* Changed: icon size තවත් අඩු කළා */
+            height: 40px;
+            filter: invert(100%) drop-shadow(0 0 5px rgba(0, 123, 255, 0.5)); /* White icon with blue glow */
+            margin-bottom: 5px; /* Changed: margin තවත් අඩු කළා */
+        }
+
+        .upload-button {
+            background-color: #007bff;
+            color: white;
+            padding: 8px 18px; /* Changed: padding තවත් අඩු කළා */
+            border-radius: 8px;
+            font-size: 0.9em; /* Changed: font size තවත් අඩු කළා */
+            font-weight: bold;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
+            transition: background-color 0.3s ease, transform 0.2s ease;
+        }
+
+        .upload-button:hover {
+            background-color: #0056b3;
+            transform: translateY(-2px); /* Slight lift on hover */
+        }
+
+        .upload-icon {
+            width: 20px; /* Smaller icon */
+            height: 20px;
+            filter: invert(100%);
+        }
+
+        .or-text {
+            margin-top: 10px; /* Changed: margin තවත් අඩු කළා */
+            font-size: 0.75em; /* Changed: font size තවත් අඩු කළා */
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        kbd {
+            background-color: rgba(255, 255, 255, 0.2);
+            border-radius: 3px;
+            padding: 1px 4px; /* Changed: padding තවත් අඩු කළා */
+            font-family: 'Courier New', Courier, monospace; /* Monospace font */
+            font-size: 0.75em; /* Changed: font size තවත් අඩු කළා */
+        }
+
+        .examples {
+            margin-top: 0; /* Let gap handle spacing */
+            flex-grow: 0;
+        }
+
+        .examples p {
+            font-size: 0.9em; /* Changed: font size තවත් අඩු කළා */
+            color: rgba(255, 255, 255, 0.8);
+            margin-bottom: 5px; /* Changed: margin තවත් අඩු කළා */
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.2);
+        }
+
+        .example-images {
+            display: flex;
+            gap: 10px; /* Changed: gap තවත් අඩු කළා */
+            justify-content: center;
+        }
+
+        .example-images img {
+            width: 50px; /* Changed: image size තවත් අඩු කළා */
+            height: 50px; /* Changed: image size තවත් අඩු කළා */
+            object-fit: cover;
+            border-radius: 4px; /* Changed: border radius තවත් අඩු කළා */
+            cursor: pointer;
+            border: 2px solid transparent;
+            transition: border-color 0.3s ease, transform 0.2s ease, box-shadow 0.3s ease;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3); /* Shadow for example images */
+        }
+
+        .example-images img:hover {
+            border-color: #40e0d0; /* Neon blue border on hover */
+            transform: translateY(-3px); /* Lift on hover */
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.4);
+        }
+
+        .footer-links {
+            margin-top: auto; /* Push to the bottom */
+            flex-grow: 0;
+            font-size: 0.65em; /* Changed: font size තවත් අඩු කළා */
+            color: rgba(255, 255, 255, 0.6);
+            text-align: center;
+        }
+
+        .footer-links a {
+            color: #40e0d0; /* Neon blue links */
+            text-decoration: underline;
+            transition: color 0.3s ease;
+        }
+
+        .footer-links a:hover {
+            color: #33ff99; /* Greenish yellow on hover */
+        }
+
+        .right-panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 8px; /* Changed: padding තවත් අඩු කළා */
+            background: linear-gradient(to bottom right, #1a1a1a, #20b2aa);
+            border-radius: 12px; /* Changed: border-radius තව ටිකක් අඩු කළා */
+            box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.2);
+        }
+
+        /* Initial Placeholder (now also for processed image) */
+        .initial-placeholder {
+            width: 100%;
+            max-width: 90%; /* Increased max-width for larger preview */
+            height: auto;
+            aspect-ratio: 1 / 1;
+            background-color: rgba(0, 0, 0, 0.3); /* Darker background */
+            border-radius: 10px;
+            display: flex; /* Always flex */
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+            margin-bottom: 8px; /* Changed: margin තවත් අඩු කළා */
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+            position: relative; /* For text overlay */
+            flex-grow: 1; /* Allow it to grow and take available space */
+        }
+
+        .initial-placeholder img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain; /* Changed to contain to show full image without cropping */
+            filter: brightness(70%) grayscale(50%); /* Slightly darker and desaturated */
+            transition: filter 0.3s ease;
+        }
+
+        .initial-placeholder.processed img {
+            filter: brightness(100%) grayscale(0%); /* Full color for processed image */
+        }
+
+        .initial-placeholder:hover img {
+            filter: brightness(100%) grayscale(0%); /* Full color on hover */
+        }
+
+        .placeholder-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 1em; /* Changed: font size තවත් අඩු කළා */
+            text-align: center;
+            text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.5);
+            pointer-events: none; /* Allows clicks to pass through to underlying image */
+        }
+        /* Hide placeholder text when an image is loaded */
+        .initial-placeholder.has-image .placeholder-text {
+            display: none;
+        }
+
+        /* Action Buttons Wrapper (for Download and Upload Again) - now always in left panel and hidden/shown */
+        .action-buttons {
+            display: flex;
+            gap: 6px; /* Changed: gap තවත් අඩු කළා */
+            margin-top: 0;
+            margin-bottom: 0;
+            transition: opacity 0.5s ease, transform 0.5s ease;
+            opacity: 0; /* Hidden by default */
+            transform: translateY(20px); /* Slide up on appear */
+            pointer-events: none; /* Make unclickable */
+            justify-content: center; /* Center buttons within action-buttons div */
+            flex-grow: 0; /* Don't grow, take only necessary space */
+        }
+        .action-buttons.visible-left {
+            opacity: 1;
+            transform: translateY(0);
+            pointer-events: auto; /* Make clickable */
+            margin-top: 15px; /* Add some space above buttons when visible */
+        }
+
+        /* Download Button Styles (adjusting for new placement) */
+        .download-button, .upload-again-button {
+            background-color: #28a745; /* Green for download */
+            color: white;
+            padding: 7px 12px; /* Changed: padding තවත් අඩු කළා */
+            border-radius: 8px;
+            font-size: 0.85em; /* Changed: font size තවත් අඩු කළා */
+            font-weight: bold;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            transition: background-color 0.3s ease, transform 0.2s ease;
+        }
+
+        .download-button:hover, .upload-again-button:hover {
+            background-color: #218838;
+            transform: translateY(-2px);
+        }
+
+        .upload-again-button {
+            background-color: #007bff; /* Blue for upload again */
+        }
+        .upload-again-button:hover {
+            background-color: #0056b3;
+        }
+
+
+        .download-icon {
+            width: 18px; /* Smaller icon */
+            height: 18px;
+            filter: invert(100%);
+        }
+
+
+        /* Loading indicator styles */
+        .loading-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.7);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            font-size: 1.5em;
+            border-radius: 15px;
+            flex-direction: column;
+            gap: 15px;
+            z-index: 10; /* Ensure it's above other elements */
+        }
+
+        .spinner {
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-top: 4px solid #007bff;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+
+        /* Media query for very small screens (e.g., mobile landscape) */
+        @media (max-width: 600px) {
+            .container {
+                min-height: 80vh; /* Mobile වලට තව ටිකක් උස වැඩි කරන්න */
+                max-height: 95vh;
+                padding: 10px;
+                flex-direction: column; /* Mobile වලට column විදියට පෙන්නන්න */
+            }
+
+            .left-panel {
+                padding-right: 0;
+                margin-bottom: 15px;
+                gap: 8px; /* Mobile වලට gap තව අඩු කරන්න */
+            }
+
+            .left-panel h1 {
+                font-size: 2em;
+            }
+
+            .left-panel p {
+                font-size: 0.85em;
+            }
+
+            .upload-area {
+                min-height: 80px;
+                padding: 15px 10px;
+            }
+
+            .upload-area-icon {
+                width: 35px;
+                height: 35px;
+                margin-bottom: 5px;
+            }
+
+            .upload-button {
+                font-size: 0.8em;
+                padding: 6px 12px;
+            }
+
+            .or-text {
+                font-size: 0.7em;
+            }
+
+            .examples p {
+                font-size: 0.8em;
+            }
+
+            .example-images {
+                gap: 8px;
+                flex-wrap: wrap; /* Images wrap වෙන්න දෙන්න */
+                justify-content: center;
+            }
+
+            .example-images img {
+                width: 45px;
+                height: 45px;
+            }
+
+            .footer-links {
+                font-size: 0.6em;
+                margin-top: 10px;
+            }
+
+            .right-panel {
+                padding: 10px;
+                min-height: 200px; /* Mobile වලට right panel එකටත් අවම උසක් දෙන්න */
+            }
+
+            .initial-placeholder { /* This now handles the main image display */
+                max-width: 100%; /* Mobile වලට 100% පළල දෙන්න */
+            }
+
+            .placeholder-text {
+                font-size: 0.9em;
+            }
+
+            .action-buttons {
+                flex-direction: column; /* Mobile වලට buttons උඩින් යටින් පෙන්නන්න */
+                gap: 8px;
+                width: 100%; /* buttons 100% පළලට ගන්න */
+            }
+
+            .download-button, .upload-again-button {
+                width: 100%; /* buttons 100% පළලට ගන්න */
+                text-align: center;
+                justify-content: center; /* Text center කරන්න */
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="left-panel">
+            <div>
+                <h1>AI Background Remover</h1>
+                <p>Remove background from image instantly, fully automated and <span class="free-text">FREE</span></p>
+            </div>
+
+            <div class="upload-area" id="uploadArea">
+                <svg class="upload-area-icon" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-4 2 2 4-4zm-4 2a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd"></path></svg>
+                <label for="upload-input" class="upload-button">
+                    <svg class="upload-icon" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V7z" clip-rule="evenodd"></path></svg>
+                    Upload Your Image
+                </label>
+                <input type="file" id="upload-input" accept="image/*" hidden>
+                <p class="or-text">Or Drop an image,<br>paste image with <kbd>Ctrl</kbd> + <kbd>V</kbd></p>
+            </div>
+
+            <div class="action-buttons" id="actionButtons">
+                <a href="#" id="downloadButton" class="download-button" download="background_removed_image.png">
+                    <svg class="download-icon" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L10 11.586l1.293-1.293a1 1 0 111.414 1.414l-2 2a1 1 0 01-1.414 0l-2-2a1 1 0 010-1.414z" clip-rule="evenodd"></path></svg>
+                    Download
+                </a>
+                <button id="uploadAgainButton" class="upload-again-button">
+                    <svg class="download-icon" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L10 11.586l1.293-1.293a1 1 0 111.414 1.414l-2 2a1 1 0 01-1.414 0l-2-2a1 1 0 010-1.414zM9 5a1 1 0 011-1h.01a1 1 0 011 1v4a1 1 0 01-1 1h-.01a1 1 0 01-1-1V5z" clip-rule="evenodd"></path></svg>
+                    Upload Again
+                </button>
+            </div>
+
+            <div class="examples">
+                <p>No image? Try one of these</p>
+                <div class="example-images">
+                    <img src="https://static.remove.bg/uploader-examples/person/7_thumbnail.jpg" alt="Example Car" data-src="https://via.placeholder.com/400/FF5733/FFFFFF?text=Car">
+                    <img src="https://static.remove.bg/uploader-examples/animal/7_thumbnail.jpg" alt="Example Person" data-src="https://via.placeholder.com/400/33FF57/FFFFFF?text=Person">
+                    <img src="https://static.remove.bg/uploader-examples/car/2_thumbnail.jpg" alt="Example Camera" data-src="https://via.placeholder.com/400/3357FF/FFFFFF?text=Camera">
+                    <img src="https://static.remove.bg/uploader-examples/product/9_thumbnail.jpg" alt="Example Dog" data-src="https://via.placeholder.com/400/FFFF33/000000?text=Dog">
+                </div>
+            </div>
+
+            <div class="footer-links">
+                <p>By uploading an image or url, you agree to our <a href="#">Terms of Service</a>. This site is protected by reCaptcha and its <a href="#">Privacy Policy</a> and <a href="#">Terms of Service</a> apply.</p>
+            </div>
+        </div>
+        <div class="right-panel" style="position: relative;">
+            <div class="initial-placeholder" id="initialPlaceholder">
+                <img src="https://plus.unsplash.com/premium_photo-1674498703226-2a6937b149e9?fm=jpg&q=60&w=3000&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8NXx8Z2lybCUyMG1vZGVsfGVufDB8fDB8fHww" alt="Model Placeholder">
+                <p class="placeholder-text">See your image here!</p>
+            </div>
+
+            <div class="loading-overlay" id="loadingOverlay">
+                <div class="spinner"></div>
+                <p>Removing background...</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const uploadInput = document.getElementById('upload-input');
+        const initialPlaceholder = document.getElementById('initialPlaceholder'); // This will now display the main image
+        const mainPreviewImage = initialPlaceholder.querySelector('img'); // The image element inside the placeholder
+        const placeholderText = initialPlaceholder.querySelector('.placeholder-text'); // The text inside the placeholder
+        const exampleImages = document.querySelectorAll('.example-images img');
+        const uploadArea = document.getElementById('uploadArea');
+        const loadingOverlay = document.getElementById('loadingOverlay');
+        const downloadButton = document.getElementById('downloadButton');
+        const uploadAgainButton = document.getElementById('uploadAgainButton');
+        const actionButtons = document.getElementById('actionButtons');
+
+        // Function to show the Upload Area and hide processed elements
+        function showUploadArea() {
+            uploadArea.classList.remove('hidden-left'); // Show upload area
+            actionButtons.classList.remove('visible-left'); // Hide action buttons
+            initialPlaceholder.classList.remove('processed'); // Remove processed class from placeholder
+            initialPlaceholder.classList.remove('has-image'); // Indicate no user image is loaded
+            mainPreviewImage.src = "https://plus.unsplash.com/premium_photo-1674498703226-2a6937b149e9?fm=jpg&q=60&w=3000&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8NXx8Z2lybCUyMG1vZGVsfGVufDB8fDB8fHww"; // Reset to initial placeholder image
+            placeholderText.style.display = 'block'; // Show placeholder text
+        }
+
+        // Function to show the processed image in the right panel and controls in the left
+        function showProcessedImage() {
+            uploadArea.classList.add('hidden-left'); // Hide upload area
+            actionButtons.classList.add('visible-left'); // Show action buttons
+            initialPlaceholder.classList.add('processed'); // Add processed class to change filter/styles
+            initialPlaceholder.classList.add('has-image'); // Indicate an image is loaded
+            placeholderText.style.display = 'none'; // Hide placeholder text
+        }
+
+        function showLoading() {
+            loadingOverlay.style.display = 'flex';
+            // Hide elements that shouldn't be visible during loading
+            uploadArea.classList.add('hidden-left'); // Hide upload area during loading
+            actionButtons.classList.remove('visible-left'); // Hide action buttons during loading
+        }
+
+        function hideLoading() {
+            loadingOverlay.style.display = 'none';
+        }
+
+        async function processImage(file) {
+            if (!file) return;
+
+            showLoading();
+
+            const formData = new FormData();
+            formData.append('image', file);
+
+            try {
+                const response = await fetch('http://localhost:5000/remove-background', {
+                    method: 'POST',
+                    body: formData,
+                });
+
+                if (response.ok) {
+                    const blob = await response.blob();
+                    const imageUrl = URL.createObjectURL(blob);
+                    mainPreviewImage.src = imageUrl; // Update the main image in the right panel
+
+                    downloadButton.href = imageUrl; // Set download link for processed image
+                    showProcessedImage(); // Show the processed image and buttons
+                } else {
+                    const errorData = await response.json();
+                    alert('Error removing background: ' + (errorData.error || 'Unknown error'));
+                    console.error('Backend error:', errorData);
+                    showUploadArea(); // If error, show upload area again
+                }
+            } catch (error) {
+                alert('Network or server error: ' + error.message);
+                console.error('Fetch error:', error);
+                showUploadArea(); // If network error, show upload area again
+            } finally {
+                hideLoading();
+            }
+        }
+
+        // Event Listeners
+
+        // File input change
+        uploadInput.addEventListener('change', function(event) {
+            const file = event.target.files[0];
+            if (file) {
+                processImage(file);
+            }
+        });
+
+        // Example image clicks
+        exampleImages.forEach(img => {
+            img.addEventListener('click', function() {
+                const fullImageUrl = this.getAttribute('data-src');
+                mainPreviewImage.src = fullImageUrl;
+                downloadButton.href = fullImageUrl; // Set download link to example image
+                showProcessedImage(); // Show the processed image and buttons for examples
+            });
+        });
+
+        // Drag and drop
+        uploadArea.addEventListener('dragover', (event) => {
+            event.preventDefault();
+            uploadArea.style.backgroundColor = 'rgba(255, 255, 255, 0.2)';
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.style.backgroundColor = 'rgba(255, 255, 255, 0.1)';
+        });
+
+        uploadArea.addEventListener('drop', (event) => {
+            event.preventDefault();
+            uploadArea.style.backgroundColor = 'rgba(255, 255, 255, 0.1)';
+            const files = event.dataTransfer.files;
+            if (files.length > 0) {
+                const file = files[0];
+                if (file.type.startsWith('image/')) {
+                    processImage(file);
+                } else {
+                    alert('Please drop an image file.');
+                }
+            }
+        });
+
+        // Paste from clipboard
+        document.addEventListener('paste', (event) => {
+            const items = (event.clipboardData || event.originalEvent.clipboardData).items;
+            for (let i = 0; i < items.length; i++) {
+                if (items[i].type.indexOf('image') !== -1) {
+                    const file = items[i].getAsFile();
+                    if (file) {
+                        processImage(file);
+                        event.preventDefault();
+                        break;
+                    }
+                }
+            }
+        });
+
+        // Upload Again Button click event
+        uploadAgainButton.addEventListener('click', () => {
+            showUploadArea(); // Show the upload area again
+        });
+
+        // Initial state: ensure upload area is visible and action buttons are hidden
+        showUploadArea();
+    </script>
+</body>
+</html>
