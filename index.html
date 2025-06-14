@@ -549,7 +549,7 @@
             formData.append('image', file);
 
             try {
-                const response = await fetch('http://localhost:5000/remove-background', {
+                const response = await fetch('remove-bg', {
                     method: 'POST',
                     body: formData,
                 });
